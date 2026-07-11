@@ -40,7 +40,7 @@
         // IMPORTANTE: Insira o nome exato do bucket de armazenamento (ex: "servidormidia")
         const BUCKET_NAME = "midia"; 
 
-        const supabase = @supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         let arquivosLista = [];
 
         async function carregarGaleria() {

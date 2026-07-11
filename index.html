@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciador de Mídias - Supabase</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <style>
+        body { font-family: Arial, sans-serif; background: #121212; color: #fff; padding: 20px; margin: 0; }
+        .container { max-width: 1200px; margin: 0 auto; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 20px; margin-bottom: 20px; }
+        .btn { background: #00bcd4; border: none; padding: 10px 15px; color: white; cursor: pointer; border-radius: 4px; font-weight: bold; }
+        .btn-deletar { background: #ff5252; padding: 5px 10px; font-size: 12px; }
+        .galeria { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
+        .item-midia { border: 1px solid #333; padding: 10px; text-align: center; background: #1e1e1e; border-radius: 6px; }
+        .item-midia img, .item-midia video { max-width: 100%; height: 150px; object-fit: cover; border-radius: 4px; }
+        .info { font-size: 11px; color: #aaa; margin: 10px 0; word-break: break-all; }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="header">
+            <h2>Gerenciador de Fotos e Vídeos</h2>
+            <button class="btn" onclick="baixarTudoEmZip()">Baixar Tudo em ZIP</button>
+        </div>
+        
+        <div class="galeria" id="galeria">
+            </div>
+    </div>
+
+    <script>
+        // CONFIGURAÇÕES DO SEU SUPABASE
+        const SUPABASE_URL = "https://uuvsehugndrxgnvfagjo.supabase.co";
+        
+        // IMPORTANTE: Insira aqui a sua chave pública (anon key) do painel do Supabase
+        const SUPABASE_KEY = "COLE_AQUI_A_SUA_ANON_KEY"; 
+        
+        // IMPORTANTE: Insira o nome exato do bucket de armazenamento (ex: "servidormidia")
+        const BUCKET_NAME = "COLE_AQUI_O_NOME_DO_SEU_BUCKET"; 
+
+        const supabase = @supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        let arquivosLista = [];
+
+        async function carregarGaleria() {
+            const galeriaDiv = document.getElementById('galeria');
+            galeriaDiv.innerHTML = "<p>Buscando mídias no servidor...</p>";
+
+            const { data, error } = await supabase.storage.from(BUCKET_NAME).list('', {
+                sortBy: { column: 'created_at', order: 'desc' }
+            });
+
+            if (error) {
+                galeriaDiv.innerHTML = "<p>Erro ao carregar: " + error.message + "</p>";
+                return;
+            }
+
+            arquivosLista = data || [];
+            if (arquivosLista.length === 0) {
+                galeriaDiv.innerHTML = "<p>Nenhuma foto ou vídeo encontrado no bucket.</p>";
+                return;
+            }
+
+            galeriaDiv.innerHTML = "";
+
+            arquivosLista.forEach(arquivo => {
+                const { data: urlData } = supabase.storage.from(BUCKET_NAME).getPublicUrl(arquivo.name);
+                const urlPublica = urlData.publicUrl;
+                const ehVideo = arquivo.name.toLowerCase().endsWith('.mp4');
+
+                const item = document.createElement('div');
+                item.className = 'item-midia';
+                
+                if (ehVideo) {
+                    item.innerHTML = `<video src="${urlPublica}" controls></video>`;
+                } else {
+                    item.innerHTML = `<img src="${urlPublica}" alt="${arquivo.name}">`;
+                }
+
+                item.innerHTML += `
+                    <div class="info">${arquivo.name}</div>
+                    <button class="btn btn-deletar" onclick="deletarArquivo('${arquivo.name}')">Excluir</button>
+                `;
+                galeriaDiv.appendChild(item);
+            });
+        }
+
+        async function deletarArquivo(nomeArquivo) {
+            if (confirm("Deseja mesmo excluir este arquivo?")) {
+                const { error } = await supabase.storage.from(BUCKET_NAME).remove([nomeArquivo]);
+                if (error) {
+                    alert("Erro: " + error.message);
+                } else {
+                    carregarGaleria();
+                }
+            }
+        }
+
+        async function baixarTudoEmZip() {
+            if (arquivosLista.length === 0) return alert("Nenhum arquivo encontrado.");
+            
+            const zip = new JSZip();
+            alert("Baixando mídias e compactando em ZIP... Aguarde a conclusão.");
+
+            for (let arquivo of arquivosLista) {
+                try {
+                    const { data: urlData } = supabase.storage.from(BUCKET_NAME).getPublicUrl(arquivo.name);
+                    const resposta = await fetch(urlData.publicUrl);
+                    const blob = await resposta.blob();
+                    zip.file(arquivo.name, blob);
+                } catch (e) {
+                    console.error("Erro ao zipar arquivo: " + arquivo.name, e);
+                }
+            }
+
+            zip.generateAsync({ type: "blob" }).then(function(content) {
+                const link = document.createElement('a');
+                link.href = URL.createObjectURL(content);
+                link.download = "midias_backup.zip";
+                link.click();
+            });
+        }
+
+        carregarGaleria();
+    </script>
+</body>
+</html>

@@ -34,20 +34,21 @@
         // CONFIGURAÇÕES DO SEU SUPABASE
         const SUPABASE_URL = "https://uuvsehugndrxgnvfagjo.supabase.co";
         
-        // IMPORTANTE: Insira aqui a sua chave pública (anon key) do painel do Supabase
+        // Chave pública (anon key) do seu painel do Supabase
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV1dnNlaHVnbmRyeGdudmZhZ2pvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM0MzI0MzIsImV4cCI6MjA5OTAwODQzMn0.NWVzFCl5-BzHVmlQI4knMMkHDVyiv5gzYk0z-_t-hpw"; 
         
-        // IMPORTANTE: Insira o nome exato do bucket de armazenamento (ex: "servidormidia")
+        // Nome exato do bucket de armazenamento
         const BUCKET_NAME = "midia"; 
 
-        const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        // Conexão corrigida sem duplicar o identificador 'supabase'
+        const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         let arquivosLista = [];
 
         async function carregarGaleria() {
             const galeriaDiv = document.getElementById('galeria');
             galeriaDiv.innerHTML = "<p>Buscando mídias no servidor...</p>";
 
-            const { data, error } = await supabase.storage.from(BUCKET_NAME).list('', {
+            const { data, error } = await supabaseClient.storage.from(BUCKET_NAME).list('', {
                 sortBy: { column: 'created_at', order: 'desc' }
             });
 
@@ -65,7 +66,7 @@
             galeriaDiv.innerHTML = "";
 
             arquivosLista.forEach(arquivo => {
-                const { data: urlData } = supabase.storage.from(BUCKET_NAME).getPublicUrl(arquivo.name);
+                const { data: urlData } = supabaseClient.storage.from(BUCKET_NAME).getPublicUrl(arquivo.name);
                 const urlPublica = urlData.publicUrl;
                 const ehVideo = arquivo.name.toLowerCase().endsWith('.mp4');
 
@@ -88,7 +89,7 @@
 
         async function deletarArquivo(nomeArquivo) {
             if (confirm("Deseja mesmo excluir este arquivo?")) {
-                const { error } = await supabase.storage.from(BUCKET_NAME).remove([nomeArquivo]);
+                const { error } = await supabaseClient.storage.from(BUCKET_NAME).remove([nomeArquivo]);
                 if (error) {
                     alert("Erro: " + error.message);
                 } else {
@@ -105,7 +106,7 @@
 
             for (let arquivo of arquivosLista) {
                 try {
-                    const { data: urlData } = supabase.storage.from(BUCKET_NAME).getPublicUrl(arquivo.name);
+                    const { data: urlData } = supabaseClient.storage.from(BUCKET_NAME).getPublicUrl(arquivo.name);
                     const resposta = await fetch(urlData.publicUrl);
                     const blob = await resposta.blob();
                     zip.file(arquivo.name, blob);

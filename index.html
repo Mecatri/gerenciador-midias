@@ -50,6 +50,7 @@
 
             const { data, error } = await supabaseClient.storage.from(BUCKET_NAME).list('', {
                 sortBy: { column: 'created_at', order: 'desc' }
+                limit: 30000
             });
 
             if (error) {

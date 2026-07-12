@@ -44,21 +44,43 @@
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         let arquivosLista = [];
 
-        async function carregarGaleria() {
+async function carregarGaleria() {
             const galeriaDiv = document.getElementById('galeria');
             galeriaDiv.innerHTML = "<p>Buscando mídias no servidor...</p>";
 
-            const { data, error } = await supabaseClient.storage.from(BUCKET_NAME).list('', {
-                sortBy: { column: 'created_at', order: 'desc' }
-                limit: 5000
-            });
+            let todasAsMidias = [];
+            let paginaTamanho = 100; // Limite máximo seguro do Supabase
+            let offset = 0;
+            let continuaBuscando = true;
 
-            if (error) {
-                galeriaDiv.innerHTML = "<p>Erro ao carregar: " + error.message + "</p>";
-                return;
+            // Loop para buscar de 100 em 100 até o fim
+            while (continuaBuscando) {
+                const { data, error } = await supabaseClient.storage.from(BUCKET_NAME).list('', {
+                    sortBy: { column: 'created_at', order: 'desc' },
+                    limit: paginaTamanho,
+                    offset: offset
+                });
+
+                if (error) {
+                    galeriaDiv.innerHTML = "<p>Erro ao carregar: " + error.message + "</p>";
+                    return;
+                }
+
+                if (data && data.length > 0) {
+                    todasAsMidias = todasAsMidias.concat(data);
+                    offset += paginaTamanho;
+                    
+                    // Se veio menos que 100, significa que era a última página
+                    if (data.length < paginaTamanho) {
+                        continuaBuscando = false;
+                    }
+                } else {
+                    continuaBuscando = false;
+                }
             }
 
-            arquivosLista = data || [];
+            arquivosLista = todasAsMidias;
+
             if (arquivosLista.length === 0) {
                 galeriaDiv.innerHTML = "<p>Nenhuma foto ou vídeo encontrado no bucket.</p>";
                 return;

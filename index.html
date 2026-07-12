@@ -9,13 +9,18 @@
     <style>
         body { font-family: Arial, sans-serif; background: #121212; color: #fff; padding: 20px; margin: 0; }
         .container { max-width: 1200px; margin: 0 auto; }
-        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 20px; margin-bottom: 20px; }
-        .btn { background: #00bcd4; border: none; padding: 10px 15px; color: white; cursor: pointer; border-radius: 4px; font-weight: bold; }
-        .btn-deletar { background: #ff5252; padding: 5px 10px; font-size: 12px; }
+        .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 20px; margin-bottom: 20px; flex-wrap: wrap; gap: 15px; }
+        .controles { display: flex; gap: 10px; align-items: center; }
+        .btn { border: none; padding: 10px 15px; color: white; cursor: pointer; border-radius: 4px; font-weight: bold; }
+        .btn-zip { background: #00bcd4; }
+        .btn-selecionar { background: #555; }
+        .btn-perigo { background: #ff5252; }
+        .btn-deletar-item { background: #ff5252; padding: 5px 10px; font-size: 12px; margin-top: 5px; }
         .galeria { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 20px; }
-        .item-midia { border: 1px solid #333; padding: 10px; text-align: center; background: #1e1e1e; border-radius: 6px; }
+        .item-midia { border: 1px solid #333; padding: 10px; text-align: center; background: #1e1e1e; border-radius: 6px; position: relative; }
         .item-midia img, .item-midia video { max-width: 100%; height: 150px; object-fit: cover; border-radius: 4px; }
         .info { font-size: 11px; color: #aaa; margin: 10px 0; word-break: break-all; }
+        .checkbox-container { position: absolute; top: 15px; left: 15px; z-index: 10; transform: scale(1.5); cursor: pointer; }
     </style>
 </head>
 <body>
@@ -23,7 +28,11 @@
     <div class="container">
         <div class="header">
             <h2>Gerenciador de Fotos e Vídeos</h2>
-            <button class="btn" onclick="baixarTudoEmZip()">Baixar Tudo em ZIP</button>
+            <div class="controles">
+                <button class="btn btn-selecionar" onclick="alternarSelecionarTodos()" id="btnSelecionarTodos">Selecionar Todas</button>
+                <button class="btn btn-perigo" onclick="excluirSelecionados()">Excluir Selecionadas</button>
+                <button class="btn btn-zip" onclick="baixarTudoEmZip()">Baixar Tudo em ZIP</button>
+            </div>
         </div>
         
         <div class="galeria" id="galeria">
@@ -31,29 +40,23 @@
     </div>
 
     <script>
-        // CONFIGURAÇÕES DO SEU SUPABASE
         const SUPABASE_URL = "https://uuvsehugndrxgnvfagjo.supabase.co";
-        
-        // Chave pública (anon key) do seu painel do Supabase
         const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV1dnNlaHVnbmRyeGdudmZhZ2pvIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODM0MzI0MzIsImV4cCI6MjA5OTAwODQzMn0.NWVzFCl5-BzHVmlQI4knMMkHDVyiv5gzYk0z-_t-hpw"; 
-        
-        // Nome exato do bucket de armazenamento
         const BUCKET_NAME = "midias"; 
 
-        // Conexão corrigida sem duplicar o identificador 'supabase'
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         let arquivosLista = [];
+        let todosSelecionados = false;
 
-async function carregarGaleria() {
+        async function carregarGaleria() {
             const galeriaDiv = document.getElementById('galeria');
             galeriaDiv.innerHTML = "<p>Buscando mídias no servidor...</p>";
 
             let todasAsMidias = [];
-            let paginaTamanho = 100; // Limite máximo seguro do Supabase
+            let paginaTamanho = 100; 
             let offset = 0;
             let continuaBuscando = true;
 
-            // Loop para buscar de 100 em 100 até o fim
             while (continuaBuscando) {
                 const { data, error } = await supabaseClient.storage.from(BUCKET_NAME).list('', {
                     sortBy: { column: 'created_at', order: 'desc' },
@@ -69,17 +72,15 @@ async function carregarGaleria() {
                 if (data && data.length > 0) {
                     todasAsMidias = todasAsMidias.concat(data);
                     offset += paginaTamanho;
-                    
-                    // Se veio menos que 100, significa que era a última página
-                    if (data.length < paginaTamanho) {
-                        continuaBuscando = false;
-                    }
+                    if (data.length < paginaTamanho) continuaBuscando = false;
                 } else {
                     continuaBuscando = false;
                 }
             }
 
             arquivosLista = todasAsMidias;
+            todosSelecionados = false;
+            document.getElementById('btnSelecionarTodos').innerText = "Selecionar Todas";
 
             if (arquivosLista.length === 0) {
                 galeriaDiv.innerHTML = "<p>Nenhuma foto ou vídeo encontrado no bucket.</p>";
@@ -96,26 +97,52 @@ async function carregarGaleria() {
                 const item = document.createElement('div');
                 item.className = 'item-midia';
                 
-                if (ehVideo) {
-                    item.innerHTML = `<video src="${urlPublica}" controls></video>`;
-                } else {
-                    item.innerHTML = `<img src="${urlPublica}" alt="${arquivo.name}">`;
-                }
+                let elementoMidia = ehVideo 
+                    ? `<video src="${urlPublica}" controls></video>` 
+                    : `<img src="${urlPublica}" alt="${arquivo.name}">`;
 
-                item.innerHTML += `
+                item.innerHTML = `
+                    <input type="checkbox" class="checkbox-container chk-midia" data-nome="${arquivo.name}">
+                    ${elementoMidia}
                     <div class="info">${arquivo.name}</div>
-                    <button class="btn btn-deletar" onclick="deletarArquivo('${arquivo.name}')">Excluir</button>
+                    <button class="btn btn-deletar-item" onclick="deletarArquivo('${arquivo.name}')">Excluir</button>
                 `;
                 galeriaDiv.appendChild(item);
             });
         }
 
         async function deletarArquivo(nomeArquivo) {
-            if (confirm("Deseja mesmo excluir este arquivo?")) {
-                const { error } = await supabaseClient.storage.from(BUCKET_NAME).remove([nomeArquivo]);
+            if (confirm(`Deseja mesmo excluir o arquivo "${nomeArquivo}"?`)) {
+                const { data, error } = await supabaseClient.storage.from(BUCKET_NAME).remove([nomeArquivo]);
                 if (error) {
-                    alert("Erro: " + error.message);
+                    alert("Erro do Servidor: " + error.message + "\n\nVerifique se a política (Policy) de DELETE para 'anon' foi criada no painel do Storage.");
                 } else {
+                    carregarGaleria();
+                }
+            }
+        }
+
+        function alternarSelecionarTodos() {
+            const checkboxes = document.querySelectorAll('.chk-midia');
+            todosSelecionados = !todosSelecionados;
+            
+            checkboxes.forEach(chk => chk.checked = todosSelecionados);
+            document.getElementById('btnSelecionarTodos').innerText = todosSelecionados ? "Desmarcar Todas" : "Selecionar Todas";
+        }
+
+        async function excluirSelecionados() {
+            const checkboxes = document.querySelectorAll('.chk-midia:checked');
+            if (checkboxes.length === 0) return alert("Nenhuma mídia selecionada.");
+
+            if (confirm(`Atenção: Você está prestes a apagar ${checkboxes.length} mídias definitivamente. Continuar?`)) {
+                const nomesParaExcluir = Array.from(checkboxes).map(chk => chk.getAttribute('data-nome'));
+                
+                const { data, error } = await supabaseClient.storage.from(BUCKET_NAME).remove(nomesParaExcluir);
+                
+                if (error) {
+                    alert("Erro ao excluir lote: " + error.message);
+                } else {
+                    alert(`${checkboxes.length} mídias removidas com sucesso!`);
                     carregarGaleria();
                 }
             }

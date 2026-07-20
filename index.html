@@ -21,6 +21,36 @@
         .item-midia img, .item-midia video { max-width: 100%; height: 150px; object-fit: cover; border-radius: 4px; }
         .info { font-size: 11px; color: #aaa; margin: 10px 0; word-break: break-all; }
         .checkbox-container { position: absolute; top: 15px; left: 15px; z-index: 10; transform: scale(1.5); cursor: pointer; }
+        
+        /* Estilos do Widget de Armazenamento */
+        .storage-card {
+            background: #1e1e1e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 25px;
+        }
+        .storage-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 10px;
+            font-size: 14px;
+            font-weight: bold;
+        }
+        .storage-bar-bg {
+            width: 100%;
+            height: 12px;
+            background-color: #333;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+        .storage-bar-fill {
+            height: 100%;
+            width: 0%;
+            background-color: #4caf50;
+            transition: width 0.4s ease, background-color 0.4s ease;
+        }
     </style>
 </head>
 <body>
@@ -34,15 +64,27 @@
                 <button class="btn btn-zip" onclick="baixarTudoEmZip()">Baixar Tudo em ZIP</button>
             </div>
         </div>
-        
-        <div class="galeria" id="galeria">
+
+        <!-- Barra de Progresso do Limite de Armazenamento -->
+        <div class="storage-card">
+            <div class="storage-header">
+                <span>Uso do Armazenamento (Limite Seguro Free-Tier)</span>
+                <span id="storage-text">Calculando consumo...</span>
             </div>
+            <div class="storage-bar-bg">
+                <div id="storage-bar" class="storage-bar-fill"></div>
+            </div>
+        </div>
+
+        <div class="galeria" id="galeria"></div>
     </div>
 
     <script>
-       const SUPABASE_URL = "https://slsidachijeuvokzqhva.supabase.co";
-       const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNsc2lkYWNoaWpldXZva3pxaHZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MDc1NTUsImV4cCI6MjEwMDA4MzU1NX0.FDtdKxRXwaUIAY7r2toLCVTrM7ly19_Z5QjDRlfSrto";
-       const BUCKET_NAME = "midias";
+        const SUPABASE_URL = "https://slsidachijeuvokzqhva.supabase.co";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNsc2lkYWNoaWpldXZva3pxaHZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MDc1NTUsImV4cCI6MjEwMDA4MzU1NX0.FDtdKxRXwaUIAY7r2toLCVTrM7ly19_Z5QjDRlfSrto";
+        const BUCKET_NAME = "midias";
+        const LIMITE_MAXIMO_MB = 400; // Trava de segurança de 400MB
+
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         let arquivosLista = [];
         let todosSelecionados = false;
@@ -81,6 +123,9 @@
             todosSelecionados = false;
             document.getElementById('btnSelecionarTodos').innerText = "Selecionar Todas";
 
+            // Calcula e atualiza o indicador visual de espaço ocupado
+            atualizarUsoStorage(todasAsMidias);
+
             if (arquivosLista.length === 0) {
                 galeriaDiv.innerHTML = "<p>Nenhuma foto ou vídeo encontrado no bucket.</p>";
                 return;
@@ -108,6 +153,34 @@
                 `;
                 galeriaDiv.appendChild(item);
             });
+        }
+
+        function atualizarUsoStorage(midias) {
+            let totalBytes = 0;
+
+            midias.forEach(item => {
+                if (item.metadata && item.metadata.size) {
+                    totalBytes += item.metadata.size;
+                }
+            });
+
+            const totalMB = (totalBytes / (1024 * 1024)).toFixed(1);
+            const porcentagem = Math.min(((totalMB / LIMITE_MAXIMO_MB) * 100), 100).toFixed(1);
+
+            const textElem = document.getElementById('storage-text');
+            const barElem = document.getElementById('storage-bar');
+
+            textElem.innerText = `${totalMB} MB / ${LIMITE_MAXIMO_MB} MB (${porcentagem}%)`;
+            barElem.style.width = `${porcentagem}%`;
+
+            // Altera as cores da barra conforme o nível de preenchimento
+            if (porcentagem > 85) {
+                barElem.style.backgroundColor = '#ff5252'; // Vermelho
+            } else if (porcentagem > 65) {
+                barElem.style.backgroundColor = '#ff9800'; // Laranja
+            } else {
+                barElem.style.backgroundColor = '#4caf50'; // Verde
+            }
         }
 
         async function deletarArquivo(nomeArquivo) {

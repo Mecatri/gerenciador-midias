@@ -88,7 +88,6 @@
             
             while (senhaDigitada !== SENHA_CORRETA) {
                 if (senhaDigitada === null) {
-                    // Usuário clicou em 'Cancelar'
                     bloquearSite();
                     return false;
                 }
@@ -103,14 +102,14 @@
             window.stop();
         }
 
-        // Executa a verificação de senha logo no início
+        // Executa a verificação de senha
         if (!verificarAcesso()) {
             throw new Error("Acesso interrompido por falta de autenticação.");
         }
 
-        // Configurações do Supabase
+        // Configurações do Supabase com as chaves originais e funcionais
         const SUPABASE_URL = "https://slsidachijeuvokzqhva.supabase.co";
-        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNsc2lkYWNoaWpldXZva3pxaHZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MDc1NTUsImV4cCI6MjEwMDA8MzU1NX0.FDtdKxRXwaUIAY7r2toLCVTrM7ly19_Z5QjDRlfSrto";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNsc2lkYWNoaWpldXZva3pxaHZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MDc1NTUsImV4cCI6MjEwMDA4MzU1NX0.FDtdKxRXwaUIAY7r2toLCVTrM7ly19_Z5QjDRlfSrto";
         const BUCKET_NAME = "midias";
         const LIMITE_MAXIMO_MB = 400; // Trava de segurança de 400MB
 
@@ -202,13 +201,12 @@
             textElem.innerText = `${totalMB} MB / ${LIMITE_MAXIMO_MB} MB (${porcentagem}%)`;
             barElem.style.width = `${porcentagem}%`;
 
-            // Altera as cores da barra conforme o nível de preenchimento
             if (porcentagem > 85) {
-                barElem.style.backgroundColor = '#ff5252'; // Vermelho
+                barElem.style.backgroundColor = '#ff5252';
             } else if (porcentagem > 65) {
-                barElem.style.backgroundColor = '#ff9800'; // Laranja
+                barElem.style.backgroundColor = '#ff9800';
             } else {
-                barElem.style.backgroundColor = '#4caf50'; // Verde
+                barElem.style.backgroundColor = '#4caf50';
             }
         }
 
@@ -216,7 +214,7 @@
             if (confirm(`Deseja mesmo excluir o arquivo "${nomeArquivo}"?`)) {
                 const { data, error } = await supabaseClient.storage.from(BUCKET_NAME).remove([nomeArquivo]);
                 if (error) {
-                    alert("Erro do Servidor: " + error.message + "\n\nVerifique se a política (Policy) de DELETE para 'anon' foi criada no painel do Storage.");
+                    alert("Erro do Servidor: " + error.message);
                 } else {
                     carregarGaleria();
                 }

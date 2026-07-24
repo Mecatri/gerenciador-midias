@@ -80,8 +80,37 @@
     </div>
 
     <script>
+        // Trava de segurança por senha antes de carregar o restante do site
+        const SENHA_CORRETA = "Brasil77#";
+
+        function verificarAcesso() {
+            let senhaDigitada = prompt("Acesso Restrito. Por favor, digite a senha para continuar:");
+            
+            while (senhaDigitada !== SENHA_CORRETA) {
+                if (senhaDigitada === null) {
+                    // Usuário clicou em 'Cancelar'
+                    bloquearSite();
+                    return false;
+                }
+                alert("Senha incorreta! Tente novamente.");
+                senhaDigitada = prompt("Acesso Restrito. Por favor, digite a senha para continuar:");
+            }
+            return true;
+        }
+
+        function bloquearSite() {
+            document.body.innerHTML = "<div style='display:flex; justify-content:center; align-items:center; height:100vh; font-family:Arial;'><h1 style='color:#ff5252;'>Acesso Negado</h1></div>";
+            window.stop();
+        }
+
+        // Executa a verificação de senha logo no início
+        if (!verificarAcesso()) {
+            throw new Error("Acesso interrompido por falta de autenticação.");
+        }
+
+        // Configurações do Supabase
         const SUPABASE_URL = "https://slsidachijeuvokzqhva.supabase.co";
-        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNsc2lkYWNoaWpldXZva3pxaHZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MDc1NTUsImV4cCI6MjEwMDA4MzU1NX0.FDtdKxRXwaUIAY7r2toLCVTrM7ly19_Z5QjDRlfSrto";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNsc2lkYWNoaWpldXZva3pxaHZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MDc1NTUsImV4cCI6MjEwMDA8MzU1NX0.FDtdKxRXwaUIAY7r2toLCVTrM7ly19_Z5QjDRlfSrto";
         const BUCKET_NAME = "midias";
         const LIMITE_MAXIMO_MB = 400; // Trava de segurança de 400MB
 

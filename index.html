@@ -80,20 +80,39 @@
     </div>
 
     <script>
-        // Trava de segurança por senha antes de carregar o restante do site
+        // Trava de segurança por tempo de expiração (15 minutos)
         const SENHA_CORRETA = "Brasil77#";
+        const TEMPO_LIMITE_MINUTOS = 15;
+        const CHAVE_ULTIMO_ACESSO = "ultimo_acesso_timestamp";
 
-        function verificarAcesso() {
-            let senhaDigitada = prompt("Acesso Restrito. Por favor, digite a senha para continuar:");
-            
+        function verificarAcessoComSessao() {
+            const agora = new Date().getTime();
+            const ultimoAcesso = localStorage.getItem(CHAVE_ULTIMO_ACESSO);
+
+            // Verifica se existe um acesso salvo recente (menos de 15 min)
+            if (ultimoAcesso) {
+                const minutosDecorridos = (agora - parseInt(ultimoAcesso, 10)) / (1000 * 60);
+
+                if (minutosDecorridos < TEMPO_LIMITE_MINUTOS) {
+                    localStorage.setItem(CHAVE_ULTIMO_ACESSO, agora.toString());
+                    return true;
+                }
+            }
+
+            // Pede a senha caso tenha passado dos 15 minutos ou seja o 1º acesso
+            let senhaDigitada = prompt("Acesso Restrito ou Sessão Expirada. Digite a senha para continuar:");
+
             while (senhaDigitada !== SENHA_CORRETA) {
                 if (senhaDigitada === null) {
                     bloquearSite();
                     return false;
                 }
                 alert("Senha incorreta! Tente novamente.");
-                senhaDigitada = prompt("Acesso Restrito. Por favor, digite a senha para continuar:");
+                senhaDigitada = prompt("Acesso Restrito. Digite a senha:");
             }
+
+            // Senha correta: guarda a data/hora atual
+            localStorage.setItem(CHAVE_ULTIMO_ACESSO, agora.toString());
             return true;
         }
 
@@ -102,16 +121,21 @@
             window.stop();
         }
 
-        // Executa a verificação de senha
-        if (!verificarAcesso()) {
+        // Executa a verificação no carregamento
+        if (!verificarAcessoComSessao()) {
             throw new Error("Acesso interrompido por falta de autenticação.");
         }
 
-        // Configurações do Supabase com as chaves originais e funcionais
+        // Atualiza a sessão conforme você clica/interage no site (evita ser desconectado enquanto usa)
+        window.addEventListener('click', () => {
+            localStorage.setItem(CHAVE_ULTIMO_ACESSO, new Date().getTime().toString());
+        });
+
+        // Configurações do Supabase
         const SUPABASE_URL = "https://slsidachijeuvokzqhva.supabase.co";
-        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNsc2lkYWNoaWpldXZva3pxaHZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MDc1NTUsImV4cCI6MjEwMDA4MzU1NX0.FDtdKxRXwaUIAY7r2toLCVTrM7ly19_Z5QjDRlfSrto";
+        const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNsc2lkYWNoaWpldXZva3pxaHZhIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQ1MDc1NTUsImV4cCI6MjEwMDA8MzU1NX0.FDtdKxRXwaUIAY7r2toLCVTrM7ly19_Z5QjDRlfSrto";
         const BUCKET_NAME = "midias";
-        const LIMITE_MAXIMO_MB = 400; // Trava de segurança de 400MB
+        const LIMITE_MAXIMO_MB = 400;
 
         const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
         let arquivosLista = [];
@@ -151,7 +175,6 @@
             todosSelecionados = false;
             document.getElementById('btnSelecionarTodos').innerText = "Selecionar Todas";
 
-            // Calcula e atualiza o indicador visual de espaço ocupado
             atualizarUsoStorage(todasAsMidias);
 
             if (arquivosLista.length === 0) {
